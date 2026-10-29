@@ -1,6 +1,8 @@
 import streamlit as st
 import os
 from openai import OpenAI
+from datetime import datetime
+import json
 st.set_page_config(
     page_title="AI智能伴侣",
     page_icon="😉",
@@ -8,6 +10,38 @@ st.set_page_config(
     initial_sidebar_state="expanded",
     menu_items={}
 )
+# 生成会话标识函数
+def generate_session_name():
+    return datetime.now().strftime("%Y-%m-%d %H%M%S")
+
+# 保存会话信息函数
+def save_session():
+    if st.session_state.current_session:
+        # 构建新的会话对象
+        session_data = {
+            "current_session": st.session_state.current_session,
+            "messages": st.session_state.messages,
+            "nick_name": st.session_state.nick_name,
+            "nature": st.session_state.nature
+        }
+        # 如果 sessions 目录不存在，则创建
+        if not os.path.exists("sessions"):
+            os.mkdir("sessions")
+
+        # 保存会话数据
+        with open(f"sessions/{st.session_state.current_session}.json", "w", encoding="utf-8") as f:
+            json.dump(session_data, f, ensure_ascii=False, indent=2)
+# 加载所有的会话列表信息
+def load_sessions():
+    session_list=[]
+    # 加载所有sessions目录下的文件
+    if os.path.exists("sessions"):
+        file_list=os.listdir("sessions")
+        for filename in file_list:
+            if filename.endswith(".json"):
+                session_list.append(filename[:-5])
+    return session_list
+
 # 大标题
 st.title("AI智能伴侣")
 # logo
@@ -39,6 +73,9 @@ if "nick_name" not in st.session_state:
 if "nature" not in st.session_state:
     st.session_state.nature = "活泼开朗的东北姑娘"
 
+#会话标识
+if "current_session" not in st.session_state:
+    st.session_state.current_session = generate_session_name()
 
 #展示聊天信息
 for message in st.session_state.messages:
@@ -55,6 +92,24 @@ client = OpenAI(
 
 #左侧的侧边栏(with是streamlit的上下文管理器)
 with st.sidebar:
+    # 会话信息
+    st.subheader("AI控制面板")
+
+    # 新建会话
+    if st.button("新建会话",width="stretch",icon="✏️"):
+        # 保存当前会话信息
+        save_session()
+        # 创建新的会话
+        if st.session_state.messages:# 如果聊天消息非空，true；否则，false
+            st.session_state.messages = []
+            st.session_state.current_session = generate_session_name()
+            save_session()
+            st.rerun()  # 重新运行页面
+   # 会话历史
+    st.text("会话历史")
+
+
+    # 伴侣信息
     st.subheader("伴侣的信息")
     #昵称输入框
     nick_name = st.text_input("昵称",placeholder="请输入伴侣的昵称",value=st.session_state.nick_name)
